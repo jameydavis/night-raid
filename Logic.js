@@ -17,6 +17,7 @@ var SPAWN_X = COLS - 1
 var MAX_SHELLS = 2
 var STUN_TICKS = 3          // raider ticks the launcher is knocked out after a hit
 var CITY_BONUS = 50
+var MEGA_BOMBS = 3          // per game: each one clears every raider on screen
 
 // Mutable so tests can make waves deterministic.
 var random = Math.random
@@ -44,6 +45,7 @@ function newGame(pro, high) {
     toSpawn: 0,
     cooldown: 0,
     hits: 0,               // raider hits so far; drives the explosion LED
+    bombs: MEGA_BOMBS,
     events: []
   }
   setupWave(s, 1)
@@ -220,7 +222,30 @@ function spawn(s) {
 
 // ---------------------------------------------------------------- outcomes
 
-function blast(s, x, lane) { s.blasts.push({ x: x, lane: lane, ttl: 4 }) }
+function blast(s, x, lane, ttl) { s.blasts.push({ x: x, lane: lane, ttl: ttl || 4 }) }
+
+// Mega bomb: every raider on screen is destroyed at once (armor and all) and
+// scores as usual. Three per game, so save them for when you're swamped.
+function megaBomb(s) {
+  if (s.phase === "ready") start(s)
+  if (s.phase !== "live") return false
+  if (s.bombs <= 0) { emit(s, "click", "", "NO MEGA BOMBS LEFT"); return false }
+  s.bombs -= 1
+  var downed = 0
+  for (var i = 0; i < s.raiders.length; i++) {
+    var rd = s.raiders[i]
+    if (rd.gone) continue
+    rd.gone = true
+    downed += 1
+    s.score += (rd.fast ? 20 : rd.armored ? 30 : 10) * s.wave
+    blast(s, rd.x, rd.lane, 9)
+  }
+  s.hits += 1
+  prune(s)
+  emit(s, "megabomb", "bAnG", "MEGA BOMB - " + downed + " DOWN, " + s.bombs + " LEFT")
+  checkWaveOver(s)
+  return true
+}
 
 function hit(s, idx) {
   var rd = s.raiders[idx]

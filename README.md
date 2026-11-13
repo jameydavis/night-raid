@@ -30,6 +30,7 @@ omarchy-shell jameydavis.night-raid toggle
 | --- | --- |
 | `W` / `S` (or `↑` / `↓`) | Slide the launcher up or down a lane. The first move starts the wave |
 | `Space` | **Fire** a shell down the launcher's lane |
+| `B` | **Mega bomb**: destroys every raider on screen at once. Three per game, and they don't refill between waves |
 | `Q` | **Status**: between waves, starts the next one. Otherwise shows the wave and cities left; hold to keep them up |
 | `R` | **High score**: tap for a quick look, hold to keep it up |
 | `1` / `2` | **Pro 1** (slower raiders) / **Pro 2** (fast raiders from the start), switchable between waves |
@@ -44,6 +45,8 @@ omarchy-shell jameydavis.night-raid toggle
 - Each wave sends more raiders, faster, with shorter gaps between them.
 - Raiders sometimes veer diagonally into a neighboring lane, and later waves do it more often.
 - The starburst LED next to the scoreboard flashes every time a shell hits a raider.
+- Swamped? A mega bomb clears the whole sky and still scores every raider it takes out. The BOMBS
+  lights under the display show how many you have left.
 - From wave 2, bright **armored** raiders take two hits. From wave 3, **fast** raiders flicker and
   fly two columns at a time.
 - A raider that rams your launcher is destroyed, but the launcher is knocked out for a moment and

@@ -7,7 +7,7 @@ const assert = require("assert")
 function load() {
   const src = fs.readFileSync(path.join(__dirname, "..", "Logic.js"), "utf8").replace(/^\.pragma library/m, "")
   const names = ["newGame", "move", "fire", "shellTick", "raiderTick", "nextWave", "leds", "citiesLeft",
-    "canFire", "jinkChance", "waveSize", "raiderInterval", "MAX_SHELLS", "STUN_TICKS", "CITY_BONUS"]
+    "canFire", "jinkChance", "megaBomb", "MEGA_BOMBS", "waveSize", "raiderInterval", "MAX_SHELLS", "STUN_TICKS", "CITY_BONUS"]
   return new Function(src + "\nreturn {" + names.join(",") + ", setRandom: function(f) { random = f } }")()
 }
 
@@ -143,6 +143,33 @@ test("every hit counts toward the explosion LED, including dents in armor", L =>
   assert.strictEqual(s.hits, 2)
 })
 
+test("a mega bomb destroys every raider on screen, armor and all, and scores them", L => {
+  const s = live(L, [{ x: 3, lane: 0, hp: 1 }, { x: 6, lane: 1, hp: 2, armored: true }, { x: 9, lane: 2, hp: 1, fast: true }])
+  s.toSpawn = 5 // more on the way, so the wave isn't over
+  assert.strictEqual(s.bombs, L.MEGA_BOMBS)
+  assert.ok(L.megaBomb(s))
+  assert.strictEqual(s.raiders.length, 0)
+  assert.strictEqual(s.score, 10 + 30 + 20)
+  assert.strictEqual(s.bombs, L.MEGA_BOMBS - 1)
+  assert.strictEqual(s.blasts.length, 3)
+  assert.ok(s.events.some(e => e.sound === "megabomb"))
+  assert.strictEqual(s.phase, "live")
+})
+
+test("only three mega bombs per game, and they carry over between waves", L => {
+  const s = live(L, [{ x: 5, lane: 0, hp: 1 }])
+  s.toSpawn = 9
+  L.megaBomb(s); L.megaBomb(s); L.megaBomb(s)
+  assert.strictEqual(s.bombs, 0)
+  assert.ok(!L.megaBomb(s))
+  assert.ok(s.events.some(e => e.label === "NO MEGA BOMBS LEFT"))
+  const t = live(L, [{ x: 3, lane: 1, hp: 1 }])
+  L.megaBomb(t)                // clears the last raider: wave over
+  assert.strictEqual(t.phase, "dead")
+  L.nextWave(t)
+  assert.strictEqual(t.bombs, L.MEGA_BOMBS - 1, "no refill between waves")
+})
+
 test("clearing a wave pays a bonus for every city still lit, then STATUS starts the next", L => {
   const s = live(L, [{ x: 3, lane: 1, hp: 1 }])
   s.cities = [true, false, true]
@@ -188,6 +215,7 @@ test("fuzz: random games never break invariants and always end", L => {
     while (s.phase !== "gameover" && guard++ < 200000) {
       const r = Math.random()
       if (s.phase === "dead") L.nextWave(s)
+      else if (r < 0.002) L.megaBomb(s)
       else if (r < 0.1) L.fire(s)
       else if (r < 0.2) L.move(s, Math.random() < 0.5 ? -1 : 1)
       else if (r < 0.7) L.shellTick(s)

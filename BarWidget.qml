@@ -81,10 +81,12 @@ Panel {
       }
     }
     if (best) play(best)
-    // Any hit since the last update flashes the explosion LED.
+    // Any hit since the last update flashes the explosion LED; a mega bomb
+    // holds it lit for longer.
+    var mega = events.some(function(e) { return e.sound === "megabomb" })
     if (s.hits !== lastHits) {
       lastHits = s.hits
-      if (s.hits > 0) { boomLit = true; boomTimer.restart() }
+      if (s.hits > 0) { boomTimer.interval = mega ? 1100 : 380; boomLit = true; boomTimer.restart() }
     }
     phase = s.phase
     rev++
@@ -100,9 +102,10 @@ Panel {
 
   // Lowest to highest: when one action makes several sounds, play the top one.
   readonly property var soundRank: ["blip", "step", "click", "ping", "fire", "clang", "boom", "hurt",
-    "city", "siren", "clear", "gameover"]
+    "city", "siren", "megabomb", "clear", "gameover"]
 
   readonly property var codeText: ({ "End ": " End" })
+  readonly property int bombs: { rev; return s.bombs }
 
   // ------------------------------------------------------------- sound
 
@@ -246,6 +249,7 @@ Panel {
     if (k === Qt.Key_W || k === Qt.Key_Up) { Logic.move(s, -1); sync(); return true }
     if (k === Qt.Key_S || k === Qt.Key_Down) { Logic.move(s, 1); sync(); return true }
     if (k === Qt.Key_Space) { Logic.fire(s); sync(); return true }
+    if (k === Qt.Key_B) { Logic.megaBomb(s); sync(); return true }
     return false
   }
 
@@ -526,6 +530,29 @@ Panel {
           Lamp { text: "PRO 2"; lit: root.pro === 2 }
           Lamp { text: "SOUND"; lit: !root.muted }
           Item { Layout.fillWidth: true }
+          // Mega bombs left, as three small lights.
+          Row {
+            spacing: root.u * 0.45
+            PlainLabel {
+              anchors.verticalCenter: parent.verticalCenter
+              text: "BOMBS"
+              color: root.inkDim
+              font.pixelSize: root.u * 1.0
+            }
+            Item { width: root.u * 0.3; height: 1 }
+            Repeater {
+              model: 3
+              Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: root.u * 0.9; height: width; radius: width / 2
+                color: index < root.bombs ? "#ff5a24" : "#3a0c09"
+                border.width: index < root.bombs ? 1 : 0
+                border.color: "#ffd36b"
+              }
+            }
+          }
+          Item { width: root.u * 0.8; height: 1 }
+
           // The cities still lit, as small amber lights.
           Row {
             spacing: root.u * 0.45
@@ -581,6 +608,7 @@ Panel {
 
               KeyRow { keys: ["W", "S"]; label: "MOVE LAUNCHER" }
               KeyRow { keys: ["SPACE"]; label: "FIRE" }
+              KeyRow { keys: ["B"]; label: "MEGA BOMB" }
               KeyRow { keys: ["Q"]; label: "STATUS / NEXT WAVE" }
               KeyRow { keys: ["R"]; label: "HIGH SCORE" }
               KeyRow { keys: ["1", "2"]; label: "PRO 1 / PRO 2" }
@@ -602,7 +630,7 @@ Panel {
                 + "CITY - LOSE ALL THREE AND THE LIGHTS ARE OUT. SLIDE YOUR LAUNCHER BETWEEN LANES WITH W AND S "
                 + "(OR THE ARROWS) AND FIRE WITH SPACE; ONLY TWO SHELLS CAN BE IN THE AIR. BRIGHT RAIDERS ARE "
                 + "ARMORED AND TAKE TWO HITS, FLICKERING ONES ARE FAST, SOME VEER INTO ANOTHER LANE, AND A RAIDER THAT RAMS YOUR LAUNCHER "
-                + "KNOCKS IT OUT FOR A MOMENT. EVERY CITY STILL LIT AFTER A WAVE EARNS A BONUS; PRESS STATUS "
+                + "KNOCKS IT OUT FOR A MOMENT. SWAMPED? B DROPS A MEGA BOMB THAT CLEARS THE WHOLE SKY - YOU GET THREE A GAME. EVERY CITY STILL LIT AFTER A WAVE EARNS A BONUS; PRESS STATUS "
                 + "FOR THE NEXT WAVE."
             }
           }

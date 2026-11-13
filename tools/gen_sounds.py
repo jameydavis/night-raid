@@ -66,6 +66,9 @@ def main():
     write("click", tone(300, 18, noise=0.4))
     # Explosion: a burst of noise falling in pitch.
     write("boom", tone(240, 260, 60, noise=0.85, duty=0.4))
+    # Mega bomb: a rising whistle, then a long rolling rumble.
+    write("megabomb", tone(600, 260, 2200, duty=0.3), tone(260, 500, 70, noise=0.9, duty=0.4),
+          tone(90, 900, 45, noise=0.8, duty=0.5, vibrato=0.2, vib_rate=9))
     # Armored raider dented: a metallic clang.
     write("clang", tone(880, 40), tone(1320, 40), tone(990, 80, 940, vibrato=0.05, vib_rate=40))
     # Launcher knocked out: an angry buzz.
