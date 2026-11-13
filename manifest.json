@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "jameydavis.night-raid",
   "name": "Night Raid",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "author": "Jamey Davis",
   "license": "MIT",
   "description": "A retro handheld LED defense game: guard three cities from waves of raiders with your launcher",
