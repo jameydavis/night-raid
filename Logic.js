@@ -20,6 +20,7 @@ var SHELL_TICK_MS = 70      // the host runs shellTick at this rate
 var STUN_TICKS = 3          // raider ticks the launcher is knocked out after a hit
 var CITY_BONUS = 50
 var MEGA_BOMBS = 3          // per game: each one clears every raider on screen
+var LAUNCHER_LIVES = 3      // per game: rams the launcher can take before it's destroyed
 
 // Mutable so tests can make waves deterministic.
 var random = Math.random
@@ -48,6 +49,7 @@ function newGame(pro, high) {
     cooldown: 0,
     hits: 0,               // raider hits so far; drives the explosion LED
     bombs: MEGA_BOMBS,
+    lives: LAUNCHER_LIVES,
     reload: 0,             // ms until the launcher can fire again
     events: []
   }
@@ -270,13 +272,17 @@ function hit(s, idx) {
   emit(s, "boom")
 }
 
+// A raider rams the launcher: it's destroyed, the launcher loses a life and
+// is knocked out for a moment. The third ram ends the game.
 function launcherHit(s, idx) {
   var rd = s.raiders[idx]
   if (rd) rd.gone = true
-  blast(s, LAUNCHER_X, s.launcher)
-  s.stun = STUN_TICKS
+  blast(s, LAUNCHER_X, s.launcher, 9)
+  s.lives = Math.max(0, s.lives - 1)
   s.shells = []
-  emit(s, "hurt", "", "LAUNCHER HIT")
+  if (s.lives === 0) { gameOver(s, "LAUNCHER DESTROYED - GAME OVER"); return }
+  s.stun = STUN_TICKS
+  emit(s, "hurt", "", "LAUNCHER HIT - " + s.lives + (s.lives === 1 ? " LIFE" : " LIVES") + " LEFT")
 }
 
 function checkWaveOver(s) {
@@ -289,11 +295,11 @@ function checkWaveOver(s) {
   emit(s, "clear", "CLr ", "WAVE " + s.wave + " CLEARED - CITY BONUS " + bonus)
 }
 
-function gameOver(s) {
+function gameOver(s, label) {
   s.phase = "gameover"
   s.shells = []
   s.high = Math.max(s.high, s.score)
-  emit(s, "gameover", "End ", "THE LIGHTS ARE OUT - GAME OVER")
+  emit(s, "gameover", "End ", label || "THE LIGHTS ARE OUT - GAME OVER")
 }
 
 // Called when the player presses STATUS between waves.

@@ -106,6 +106,7 @@ Panel {
 
   readonly property var codeText: ({ "End ": " End" })
   readonly property int bombs: { rev; return s.bombs }
+  readonly property int lives: { rev; return s.lives }
 
   // ------------------------------------------------------------- sound
 
@@ -525,6 +526,31 @@ Panel {
             }
           }
 
+          // Launcher lives left for the whole game, mirroring BOMBS.
+          Column {
+            Layout.alignment: Qt.AlignVCenter
+            spacing: root.u * 0.6
+            PlainLabel {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "LIVES"
+              color: root.lives > 0 ? root.ink : root.inkDim
+              font.pixelSize: root.u * 1.0
+            }
+            Row {
+              anchors.horizontalCenter: parent.horizontalCenter
+              spacing: root.u * 0.4
+              Repeater {
+                model: 3
+                Rectangle {
+                  width: root.u * 1.5; height: root.u * 0.7; radius: height / 2
+                  color: index < root.lives ? "#ff4a30" : "#3a0c09"
+                  border.width: index < root.lives ? 1 : 0
+                  border.color: "#ffb19e"
+                }
+              }
+            }
+          }
+
           Column {
             Layout.alignment: Qt.AlignVCenter
             spacing: root.u * 0.9
@@ -631,7 +657,7 @@ Panel {
               text: "RAIDERS FLY IN FROM THE RIGHT. ANY ONE THAT REACHES THE LEFT EDGE BLACKS OUT THAT LANE'S "
                 + "CITY - LOSE ALL THREE AND THE LIGHTS ARE OUT. SLIDE YOUR LAUNCHER BETWEEN LANES WITH W AND S "
                 + "(OR THE ARROWS) AND FIRE WITH SPACE; ONLY TWO SHELLS CAN BE IN THE AIR. BRIGHT RAIDERS ARE "
-                + "ARMORED AND TAKE TWO HITS, FLICKERING ONES ARE FAST, SOME VEER INTO ANOTHER LANE, AND A RAIDER THAT RAMS YOUR LAUNCHER "
+                + "ARMORED AND TAKE TWO HITS, FLICKERING ONES ARE FAST, SOME VEER INTO ANOTHER LANE, AND A RAIDER THAT RAMS YOUR LAUNCHER COSTS IT ONE OF ITS THREE LIVES AND "
                 + "KNOCKS IT OUT FOR A MOMENT. SWAMPED? B DROPS A MEGA BOMB THAT CLEARS THE WHOLE SKY - YOU GET THREE A GAME. THE LAUNCHER TAKES A MOMENT TO RELOAD - WATCH THE READY LIGHT. EVERY CITY STILL LIT "
                 + "AFTER A WAVE EARNS A BONUS; MOVE (OR PRESS STATUS) TO START THE NEXT WAVE."
             }

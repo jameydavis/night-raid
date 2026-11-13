@@ -8,7 +8,8 @@ scoreboard and an air-raid siren, all running inside the Omarchy shell.
 ![Night Raid](preview.png)
 
 Raiders fly in from the right. Any one that reaches the left edge blacks out that lane's city, and
-when all three cities are dark the lights are out for good. Slide your launcher between lanes and
+when all three cities are dark the lights are out for good. Get rammed three times and your launcher
+is gone too. Slide your launcher between lanes and
 fire down them, but only two shells can be in the air at a time.
 
 ## Install
@@ -49,8 +50,9 @@ omarchy-shell jameydavis.night-raid toggle
   lights next to the starburst show how many you have left for the whole game.
 - From wave 2, bright **armored** raiders take two hits. From wave 3, **fast** raiders flicker and
   fly two columns at a time.
-- A raider that rams your launcher is destroyed, but the launcher is knocked out for a moment and
-  its shells in flight are lost.
+- The launcher has three lives for the whole game. A raider that rams it is destroyed, but the
+  launcher loses a life, is knocked out for a moment, and loses its shells in flight. The third ram
+  destroys the launcher and ends the game. The LIVES lights next to the scoreboard show what's left.
 - Raiders are worth 10 points, fast ones 20 and armored ones 30, all multiplied by the wave number.
   Each city still lit after a wave earns a 50 × wave bonus.
 - Lost cities stay dark for the rest of the game.

@@ -7,7 +7,7 @@ const assert = require("assert")
 function load() {
   const src = fs.readFileSync(path.join(__dirname, "..", "Logic.js"), "utf8").replace(/^\.pragma library/m, "")
   const names = ["newGame", "move", "fire", "shellTick", "raiderTick", "nextWave", "leds", "citiesLeft",
-    "canFire", "RELOAD_MS", "SHELL_TICK_MS", "jinkChance", "megaBomb", "MEGA_BOMBS", "waveSize", "raiderInterval", "MAX_SHELLS", "STUN_TICKS", "CITY_BONUS"]
+    "canFire", "RELOAD_MS", "SHELL_TICK_MS", "jinkChance", "megaBomb", "MEGA_BOMBS", "LAUNCHER_LIVES", "waveSize", "raiderInterval", "MAX_SHELLS", "STUN_TICKS", "CITY_BONUS"]
   return new Function(src + "\nreturn {" + names.join(",") + ", setRandom: function(f) { random = f } }")()
 }
 
@@ -108,6 +108,35 @@ test("flying into the launcher knocks it out for a moment", L => {
   assert.strictEqual(s.launcher, 1, "can't move while knocked out")
   for (let i = 0; i < L.STUN_TICKS; i++) L.raiderTick(s)
   assert.ok(L.canFire(s))
+})
+
+test("the launcher has three lives for the whole game; the third ram ends it", L => {
+  const s = live(L, [])
+  s.toSpawn = 9
+  assert.strictEqual(s.lives, L.LAUNCHER_LIVES)
+  for (let n = 1; n <= 3; n++) {
+    s.stun = 0
+    s.raiders = [{ x: 2, lane: s.launcher, hp: 1 }]
+    L.raiderTick(s)
+    assert.strictEqual(s.lives, 3 - n)
+    if (n < 3) {
+      assert.strictEqual(s.phase, "live")
+      assert.ok(s.events.some(e => e.label === "LAUNCHER HIT - " + (3 - n) + (3 - n === 1 ? " LIFE" : " LIVES") + " LEFT"))
+    }
+  }
+  assert.strictEqual(s.phase, "gameover")
+  assert.ok(s.events.some(e => e.label === "LAUNCHER DESTROYED - GAME OVER"))
+  assert.deepStrictEqual(s.cities, [true, true, true], "the cities were fine")
+})
+
+test("lives carry over between waves", L => {
+  const s = live(L, [{ x: 2, lane: 1, hp: 1 }])
+  L.raiderTick(s) // rammed: 2 lives left, and the wave is over (no more raiders)
+  assert.strictEqual(s.lives, 2)
+  assert.strictEqual(s.phase, "dead")
+  L.nextWave(s)
+  assert.strictEqual(s.lives, 2)
+  assert.strictEqual(L.newGame(1).lives, 3)
 })
 
 test("a raider flying into a shell is hit, even between ticks", L => {
