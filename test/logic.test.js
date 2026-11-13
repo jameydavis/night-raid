@@ -65,7 +65,7 @@ test("a shell flies down the lane and destroys the first raider it meets", L => 
 test("armored raiders take two hits and are worth more", L => {
   const s = live(L, [{ x: 5, lane: 1, hp: 2, armored: true }, { x: 9, lane: 0, hp: 1 }])
   L.fire(s)
-  for (let i = 0; i < 8; i++) L.shellTick(s) // hit, then reload
+  for (let i = 0; i < Math.round(L.RELOAD_MS / L.SHELL_TICK_MS); i++) L.shellTick(s) // hit, then reload
   assert.strictEqual(s.raiders.length, 2, "first hit only dents it")
   assert.ok(s.events.some(e => e.sound === "clang"))
   L.fire(s)
@@ -74,16 +74,16 @@ test("armored raiders take two hits and are worth more", L => {
   assert.strictEqual(s.score, 30)
 })
 
-test("the launcher reloads for half a second between shots", L => {
+test("the launcher reloads between shots", L => {
   const s = live(L, [{ x: 9, lane: 0, hp: 1 }])
   assert.ok(L.fire(s))
   assert.ok(!L.fire(s), "can't fire again right away")
   assert.ok(!L.canFire(s))
   const ticks = Math.round(L.RELOAD_MS / L.SHELL_TICK_MS)
   for (let i = 0; i < ticks - 1; i++) L.shellTick(s)
-  assert.ok(!L.canFire(s), "still reloading just before half a second")
+  assert.ok(!L.canFire(s), "still reloading just before the reload time")
   L.shellTick(s)
-  assert.ok(L.canFire(s), "ready after about half a second (" + ticks * L.SHELL_TICK_MS + " ms)")
+  assert.ok(L.canFire(s), "ready after about " + L.RELOAD_MS + " ms (" + ticks * L.SHELL_TICK_MS + " ms)")
   assert.ok(L.fire(s))
   for (let i = 0; i < 12; i++) L.shellTick(s)
   assert.strictEqual(s.shells.length, 0, "missed shells fly off the right edge")
@@ -143,7 +143,7 @@ test("every hit counts toward the explosion LED, including dents in armor", L =>
   const s = live(L, [{ x: 3, lane: 1, hp: 2, armored: true }, { x: 9, lane: 0, hp: 1 }])
   L.fire(s); L.shellTick(s)
   assert.strictEqual(s.hits, 1)
-  for (let i = 0; i < 8; i++) L.shellTick(s) // reload
+  for (let i = 0; i < Math.round(L.RELOAD_MS / L.SHELL_TICK_MS); i++) L.shellTick(s) // reload
   L.fire(s); L.shellTick(s)
   assert.strictEqual(s.hits, 2)
 })

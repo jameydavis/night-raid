@@ -29,7 +29,7 @@ omarchy-shell jameydavis.night-raid toggle
 | Key | Button |
 | --- | --- |
 | `W` / `S` (or `↑` / `↓`) | Slide the launcher up or down a lane. The first move starts the wave |
-| `Space` | **Fire** a shell down the launcher's lane. The launcher takes half a second to reload; the READY light shows when it can fire |
+| `Space` | **Fire** a shell down the launcher's lane. The launcher takes 0.8 seconds to reload; the READY light shows when it can fire |
 | `B` | **Mega bomb**: destroys every raider on screen at once. Three per game, and they don't refill between waves |
 | `Q` | **Status**: shows the wave and cities left; hold to keep them up. Between waves it also starts the next one, and so does moving the launcher |
 | `R` | **High score**: tap for a quick look, hold to keep it up |
