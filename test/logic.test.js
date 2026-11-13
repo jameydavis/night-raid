@@ -1,0 +1,176 @@
+// Run: node test/logic.test.js
+// Loads Logic.js (a QML `.pragma library` file) into node and exercises the rules.
+const fs = require("fs")
+const path = require("path")
+const assert = require("assert")
+
+function load() {
+  const src = fs.readFileSync(path.join(__dirname, "..", "Logic.js"), "utf8").replace(/^\.pragma library/m, "")
+  const names = ["newGame", "move", "fire", "shellTick", "raiderTick", "nextWave", "leds", "citiesLeft",
+    "canFire", "waveSize", "raiderInterval", "MAX_SHELLS", "STUN_TICKS", "CITY_BONUS"]
+  return new Function(src + "\nreturn {" + names.join(",") + ", setRandom: function(f) { random = f } }")()
+}
+
+let passed = 0
+function test(name, fn) {
+  const L = load()
+  try { fn(L); passed++; console.log("ok   " + name) }
+  catch (e) { console.log("FAIL " + name + "\n     " + e.stack.split("\n").slice(0, 3).join("\n     ")); process.exitCode = 1 }
+}
+
+function rows(L, s) {
+  const m = L.leds(s, 0)
+  return [0, 1, 2].map(r => m.slice(r * 10, r * 10 + 10).map(v => ".rRL*#C"[v]).join(""))
+}
+
+// A live game with no more raiders coming unless the test adds them.
+function live(L, raiders) {
+  const s = L.newGame(1)
+  s.phase = "live"
+  s.toSpawn = 0
+  s.raiders = raiders || []
+  s.events = []
+  return s
+}
+
+test("start: three cities on the left, the launcher in the middle lane, nothing in the sky", L => {
+  const s = L.newGame(1)
+  assert.strictEqual(s.phase, "ready")
+  assert.deepStrictEqual(rows(L, s), ["C.........", "CL........", "C........."])
+  assert.strictEqual(s.toSpawn, L.waveSize(1))
+})
+
+test("moving or firing starts the wave; the launcher slides between lanes only", L => {
+  const s = L.newGame(1)
+  L.move(s, -1)
+  assert.strictEqual(s.phase, "live")
+  assert.strictEqual(s.launcher, 0)
+  L.move(s, -1)
+  assert.strictEqual(s.launcher, 0, "top edge")
+  L.move(s, 1); L.move(s, 1); L.move(s, 1)
+  assert.strictEqual(s.launcher, 2)
+})
+
+test("a shell flies down the lane and destroys the first raider it meets", L => {
+  const s = live(L, [{ x: 6, lane: 1, hp: 1 }, { x: 8, lane: 1, hp: 1 }])
+  L.fire(s)
+  for (let i = 0; i < 6; i++) L.shellTick(s)
+  assert.strictEqual(s.raiders.length, 1)
+  assert.strictEqual(s.raiders[0].x, 8)
+  assert.strictEqual(s.score, 10)
+  assert.ok(s.events.some(e => e.sound === "boom"))
+})
+
+test("armored raiders take two hits and are worth more", L => {
+  const s = live(L, [{ x: 5, lane: 1, hp: 2, armored: true }, { x: 9, lane: 0, hp: 1 }])
+  L.fire(s)
+  for (let i = 0; i < 5; i++) L.shellTick(s)
+  assert.strictEqual(s.raiders.length, 2, "first hit only dents it")
+  assert.ok(s.events.some(e => e.sound === "clang"))
+  L.fire(s)
+  for (let i = 0; i < 5; i++) L.shellTick(s)
+  assert.strictEqual(s.raiders.length, 1)
+  assert.strictEqual(s.score, 30)
+})
+
+test("only two shells in the air at once", L => {
+  const s = live(L, [{ x: 9, lane: 0, hp: 1 }])
+  assert.ok(L.fire(s))
+  assert.ok(L.fire(s))
+  assert.ok(!L.fire(s))
+  assert.strictEqual(s.shells.length, L.MAX_SHELLS)
+  for (let i = 0; i < 10; i++) L.shellTick(s)
+  assert.strictEqual(s.shells.length, 0, "missed shells fly off the right edge")
+  assert.ok(L.fire(s))
+})
+
+test("a raider reaching the left edge blacks out that lane's city", L => {
+  const s = live(L, [{ x: 2, lane: 0, hp: 1 }, { x: 9, lane: 2, hp: 1 }])
+  L.raiderTick(s) // to column 1 (the launcher is in lane 1, so it passes)
+  L.raiderTick(s) // into the city
+  assert.deepStrictEqual(s.cities, [false, true, true])
+  assert.strictEqual(L.citiesLeft(s), 2)
+  assert.ok(s.events.some(e => e.sound === "city"))
+})
+
+test("flying into the launcher knocks it out for a moment", L => {
+  const s = live(L, [{ x: 2, lane: 1, hp: 1 }, { x: 9, lane: 2, hp: 1 }])
+  L.raiderTick(s)
+  assert.strictEqual(s.stun, L.STUN_TICKS)
+  assert.deepStrictEqual(s.cities, [true, true, true], "the launcher took the hit, not the city")
+  assert.ok(!L.canFire(s))
+  L.move(s, -1)
+  assert.strictEqual(s.launcher, 1, "can't move while knocked out")
+  for (let i = 0; i < L.STUN_TICKS; i++) L.raiderTick(s)
+  assert.ok(L.canFire(s))
+})
+
+test("a raider flying into a shell is hit, even between ticks", L => {
+  const s = live(L, [{ x: 4, lane: 1, hp: 1 }])
+  s.shells = [{ x: 3, lane: 1 }]
+  L.raiderTick(s)
+  assert.strictEqual(s.raiders.length, 0)
+  assert.strictEqual(s.shells.length, 0)
+})
+
+test("clearing a wave pays a bonus for every city still lit, then STATUS starts the next", L => {
+  const s = live(L, [{ x: 3, lane: 1, hp: 1 }])
+  s.cities = [true, false, true]
+  L.fire(s)
+  L.shellTick(s)
+  assert.strictEqual(s.phase, "dead")
+  assert.strictEqual(s.score, 10 + 2 * L.CITY_BONUS)
+  assert.ok(L.nextWave(s))
+  assert.strictEqual(s.wave, 2)
+  assert.strictEqual(s.phase, "ready")
+  assert.deepStrictEqual(s.cities, [true, false, true], "lost cities stay dark")
+  assert.strictEqual(s.toSpawn, L.waveSize(2))
+})
+
+test("losing the last city ends the game and keeps the high score", L => {
+  const s = live(L, [{ x: 1, lane: 0, hp: 1 }])
+  s.cities = [true, false, false]
+  s.score = 420
+  L.raiderTick(s)
+  assert.strictEqual(s.phase, "gameover")
+  assert.strictEqual(s.high, 420)
+  const next = L.newGame(1, s.high)
+  assert.strictEqual(next.high, 420)
+})
+
+test("raiders arrive from the right edge and later waves get faster", L => {
+  const s = L.newGame(1)
+  L.move(s, 0) // nothing happens, but the wave hasn't started either
+  L.fire(s)    // start
+  for (let i = 0; i < 3; i++) L.raiderTick(s)
+  assert.ok(s.raiders.some(r => r.x >= 7), "a raider came in from the right")
+  const w1 = L.raiderInterval(s)
+  s.wave = 5
+  assert.ok(L.raiderInterval(s) < w1)
+  s.pro = 2
+  assert.ok(L.raiderInterval(s) < L.raiderInterval({ pro: 1, wave: 5 }))
+})
+
+test("fuzz: random games never break invariants and always end", L => {
+  for (let g = 0; g < 300; g++) {
+    const s = L.newGame(g % 2 ? 2 : 1)
+    let guard = 0
+    while (s.phase !== "gameover" && guard++ < 200000) {
+      const r = Math.random()
+      if (s.phase === "dead") L.nextWave(s)
+      else if (r < 0.1) L.fire(s)
+      else if (r < 0.2) L.move(s, Math.random() < 0.5 ? -1 : 1)
+      else if (r < 0.7) L.shellTick(s)
+      else L.raiderTick(s)
+      s.events.length = 0
+      const cells = s.raiders.map(x => x.x + ":" + x.lane)
+      assert.strictEqual(new Set(cells).size, cells.length, "two raiders share a cell")
+      for (const x of s.raiders) assert.ok(x.x >= 1 && x.x <= 9 && !x.gone, JSON.stringify(x))
+      assert.ok(s.shells.length <= L.MAX_SHELLS)
+      assert.ok(s.launcher >= 0 && s.launcher <= 2)
+    }
+    assert.strictEqual(s.phase, "gameover", "game " + g + " never ended")
+  }
+})
+
+console.log(passed + " passed")

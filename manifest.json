@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "jameydavis.night-raid",
+  "name": "Night Raid",
+  "version": "0.1.0",
+  "author": "Jamey Davis",
+  "license": "MIT",
+  "description": "A retro handheld LED defense game: guard three cities from waves of raiders with your launcher",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Night Raid",
+    "description": "Retro LED handheld defense game: click the jet to play",
+    "category": "Games",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
