@@ -150,7 +150,7 @@ Panel {
     if (statusPage >= 0) return statusText(statusPage)
     if (paused) return { text: "PAUS", colon: false, label: "PAUSED - P TO RESUME" }
     if (phase === "dead")
-      return { text: digits4(s.score), colon: false, label: "WAVE " + s.wave + " CLEARED - PRESS Q FOR WAVE " + (s.wave + 1) }
+      return { text: digits4(s.score), colon: false, label: "WAVE " + s.wave + " CLEARED - MOVE FOR WAVE " + (s.wave + 1) }
     if (phase === "ready")
       return { text: digits4(s.score), colon: false, label: "WAVE " + s.wave + " - MOVE OR FIRE TO START" }
     return { text: digits4(s.score), colon: false, label: "WAVE " + s.wave + "  -  CITIES " + Logic.citiesLeft(s) + "/3" }
@@ -268,7 +268,7 @@ Panel {
   }
   Timer {
     // Shells fly and explosions fade.
-    interval: 70; repeat: true
+    interval: Logic.SHELL_TICK_MS; repeat: true
     running: root.fullOpen && !root.paused && !root.helpOpen
       && (root.phase === "live" || root.s.blasts.length > 0)
     onTriggered: { Logic.shellTick(root.s); root.sync() }
@@ -632,8 +632,8 @@ Panel {
                 + "CITY - LOSE ALL THREE AND THE LIGHTS ARE OUT. SLIDE YOUR LAUNCHER BETWEEN LANES WITH W AND S "
                 + "(OR THE ARROWS) AND FIRE WITH SPACE; ONLY TWO SHELLS CAN BE IN THE AIR. BRIGHT RAIDERS ARE "
                 + "ARMORED AND TAKE TWO HITS, FLICKERING ONES ARE FAST, SOME VEER INTO ANOTHER LANE, AND A RAIDER THAT RAMS YOUR LAUNCHER "
-                + "KNOCKS IT OUT FOR A MOMENT. SWAMPED? B DROPS A MEGA BOMB THAT CLEARS THE WHOLE SKY - YOU GET THREE A GAME. EVERY CITY STILL LIT AFTER A WAVE EARNS A BONUS; PRESS STATUS "
-                + "FOR THE NEXT WAVE."
+                + "KNOCKS IT OUT FOR A MOMENT. SWAMPED? B DROPS A MEGA BOMB THAT CLEARS THE WHOLE SKY - YOU GET THREE A GAME. THE LAUNCHER TAKES HALF A SECOND TO RELOAD - WATCH THE READY LIGHT. EVERY CITY STILL LIT "
+                + "AFTER A WAVE EARNS A BONUS; MOVE (OR PRESS STATUS) TO START THE NEXT WAVE."
             }
           }
         }

@@ -15,6 +15,8 @@ var CITY_X = 0
 var LAUNCHER_X = 1
 var SPAWN_X = COLS - 1
 var MAX_SHELLS = 2
+var RELOAD_MS = 500         // time between shots
+var SHELL_TICK_MS = 70      // the host runs shellTick at this rate
 var STUN_TICKS = 3          // raider ticks the launcher is knocked out after a hit
 var CITY_BONUS = 50
 var MEGA_BOMBS = 3          // per game: each one clears every raider on screen
@@ -46,6 +48,7 @@ function newGame(pro, high) {
     cooldown: 0,
     hits: 0,               // raider hits so far; drives the explosion LED
     bombs: MEGA_BOMBS,
+    reload: 0,             // ms until the launcher can fire again
     events: []
   }
   setupWave(s, 1)
@@ -63,6 +66,7 @@ function setupWave(s, wave) {
   s.shells = []
   s.blasts = []
   s.stun = 0
+  s.reload = 0
   s.toSpawn = waveSize(wave)
   s.cooldown = 1
 }
@@ -90,7 +94,8 @@ function raiderAt(s, x, lane) {
 function prune(s) { s.raiders = s.raiders.filter(function(r) { return !r.gone }) }
 
 function canFire(s) {
-  return (s.phase === "live" || s.phase === "ready") && s.stun === 0 && s.shells.length < MAX_SHELLS
+  return (s.phase === "live" || s.phase === "ready") && s.stun === 0 && s.reload <= 0
+    && s.shells.length < MAX_SHELLS
 }
 
 // ---------------------------------------------------------------- actions
@@ -102,8 +107,10 @@ function start(s) {
   return true
 }
 
-// dl: -1 up, +1 down. The launcher only slides between lanes.
+// dl: -1 up, +1 down. The launcher only slides between lanes. Between waves
+// a move also starts the next wave.
 function move(s, dl) {
+  if (s.phase === "dead") nextWave(s)
   if (s.phase === "ready") start(s)
   if (s.phase !== "live" || s.stun > 0) return
   var nl = clamp(s.launcher + dl, 0, LANES - 1)
@@ -119,6 +126,7 @@ function fire(s) {
   if (s.phase === "ready") start(s)
   if (!canFire(s)) { if (s.phase === "live" && s.stun === 0) emit(s, "click"); return false }
   var shell = { x: LAUNCHER_X + 1, lane: s.launcher }
+  s.reload = RELOAD_MS
   emit(s, "fire")
   // Point blank: a raider right in front of the launcher is hit immediately.
   var r = raiderAt(s, shell.x, shell.lane)
@@ -133,6 +141,8 @@ function fire(s) {
 function shellTick(s) {
   for (var b = s.blasts.length - 1; b >= 0; b--) if (--s.blasts[b].ttl <= 0) s.blasts.splice(b, 1)
   if (s.phase !== "live") return
+  // Reloading: ready once less than half a tick is left.
+  if (s.reload > 0) s.reload = s.reload - SHELL_TICK_MS < SHELL_TICK_MS / 2 ? 0 : s.reload - SHELL_TICK_MS
   for (var i = s.shells.length - 1; i >= 0; i--) {
     var sh = s.shells[i]
     sh.x += 1

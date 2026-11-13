@@ -7,7 +7,7 @@ const assert = require("assert")
 function load() {
   const src = fs.readFileSync(path.join(__dirname, "..", "Logic.js"), "utf8").replace(/^\.pragma library/m, "")
   const names = ["newGame", "move", "fire", "shellTick", "raiderTick", "nextWave", "leds", "citiesLeft",
-    "canFire", "jinkChance", "megaBomb", "MEGA_BOMBS", "waveSize", "raiderInterval", "MAX_SHELLS", "STUN_TICKS", "CITY_BONUS"]
+    "canFire", "RELOAD_MS", "SHELL_TICK_MS", "jinkChance", "megaBomb", "MEGA_BOMBS", "waveSize", "raiderInterval", "MAX_SHELLS", "STUN_TICKS", "CITY_BONUS"]
   return new Function(src + "\nreturn {" + names.join(",") + ", setRandom: function(f) { random = f } }")()
 }
 
@@ -65,7 +65,7 @@ test("a shell flies down the lane and destroys the first raider it meets", L => 
 test("armored raiders take two hits and are worth more", L => {
   const s = live(L, [{ x: 5, lane: 1, hp: 2, armored: true }, { x: 9, lane: 0, hp: 1 }])
   L.fire(s)
-  for (let i = 0; i < 5; i++) L.shellTick(s)
+  for (let i = 0; i < 8; i++) L.shellTick(s) // hit, then reload
   assert.strictEqual(s.raiders.length, 2, "first hit only dents it")
   assert.ok(s.events.some(e => e.sound === "clang"))
   L.fire(s)
@@ -74,15 +74,19 @@ test("armored raiders take two hits and are worth more", L => {
   assert.strictEqual(s.score, 30)
 })
 
-test("only two shells in the air at once", L => {
+test("the launcher reloads for half a second between shots", L => {
   const s = live(L, [{ x: 9, lane: 0, hp: 1 }])
   assert.ok(L.fire(s))
+  assert.ok(!L.fire(s), "can't fire again right away")
+  assert.ok(!L.canFire(s))
+  const ticks = Math.round(L.RELOAD_MS / L.SHELL_TICK_MS)
+  for (let i = 0; i < ticks - 1; i++) L.shellTick(s)
+  assert.ok(!L.canFire(s), "still reloading just before half a second")
+  L.shellTick(s)
+  assert.ok(L.canFire(s), "ready after about half a second (" + ticks * L.SHELL_TICK_MS + " ms)")
   assert.ok(L.fire(s))
-  assert.ok(!L.fire(s))
-  assert.strictEqual(s.shells.length, L.MAX_SHELLS)
-  for (let i = 0; i < 10; i++) L.shellTick(s)
+  for (let i = 0; i < 12; i++) L.shellTick(s)
   assert.strictEqual(s.shells.length, 0, "missed shells fly off the right edge")
-  assert.ok(L.fire(s))
 })
 
 test("a raider reaching the left edge blacks out that lane's city", L => {
@@ -139,6 +143,7 @@ test("every hit counts toward the explosion LED, including dents in armor", L =>
   const s = live(L, [{ x: 3, lane: 1, hp: 2, armored: true }, { x: 9, lane: 0, hp: 1 }])
   L.fire(s); L.shellTick(s)
   assert.strictEqual(s.hits, 1)
+  for (let i = 0; i < 8; i++) L.shellTick(s) // reload
   L.fire(s); L.shellTick(s)
   assert.strictEqual(s.hits, 2)
 })
@@ -178,6 +183,17 @@ test("only three mega bombs per game, and they carry over between waves", L => {
   assert.strictEqual(t.wave, 7)
   assert.strictEqual(t.bombs, L.MEGA_BOMBS - 1, "bombs are per game, not per wave")
   assert.strictEqual(L.newGame(1).bombs, L.MEGA_BOMBS, "a new game starts with three")
+})
+
+test("between waves, moving the launcher starts the next wave", L => {
+  const s = live(L, [{ x: 3, lane: 1, hp: 1 }])
+  L.fire(s); L.shellTick(s)
+  assert.strictEqual(s.phase, "dead")
+  L.move(s, -1)
+  assert.strictEqual(s.wave, 2)
+  assert.strictEqual(s.phase, "live")
+  assert.strictEqual(s.launcher, 0, "and the launcher moved")
+  assert.ok(s.events.some(e => e.sound === "siren"))
 })
 
 test("clearing a wave pays a bonus for every city still lit, then STATUS starts the next", L => {
