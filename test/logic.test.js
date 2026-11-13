@@ -7,7 +7,7 @@ const assert = require("assert")
 function load() {
   const src = fs.readFileSync(path.join(__dirname, "..", "Logic.js"), "utf8").replace(/^\.pragma library/m, "")
   const names = ["newGame", "move", "fire", "shellTick", "raiderTick", "nextWave", "leds", "citiesLeft",
-    "canFire", "waveSize", "raiderInterval", "MAX_SHELLS", "STUN_TICKS", "CITY_BONUS"]
+    "canFire", "jinkChance", "waveSize", "raiderInterval", "MAX_SHELLS", "STUN_TICKS", "CITY_BONUS"]
   return new Function(src + "\nreturn {" + names.join(",") + ", setRandom: function(f) { random = f } }")()
 }
 
@@ -25,6 +25,7 @@ function rows(L, s) {
 
 // A live game with no more raiders coming unless the test adds them.
 function live(L, raiders) {
+  L.setRandom(() => 0.99) // no lane changes unless a test asks for them
   const s = L.newGame(1)
   s.phase = "live"
   s.toSpawn = 0
@@ -111,6 +112,35 @@ test("a raider flying into a shell is hit, even between ticks", L => {
   L.raiderTick(s)
   assert.strictEqual(s.raiders.length, 0)
   assert.strictEqual(s.shells.length, 0)
+})
+
+test("raiders sometimes veer into a neighboring lane, more often in later waves", L => {
+  const s = live(L, [{ x: 6, lane: 1, hp: 1 }, { x: 9, lane: 2, hp: 1 }])
+  L.setRandom(() => 0.0) // always jink, always pick the first free choice (up)
+  L.raiderTick(s)
+  const r = s.raiders.find(x => x.x === 5)
+  assert.ok(r, "it still advanced")
+  assert.strictEqual(r.lane, 0, "and moved up a lane")
+  assert.ok(L.jinkChance({ wave: 6 }) > L.jinkChance({ wave: 1 }))
+  assert.ok(L.jinkChance({ wave: 50 }) <= 0.25)
+})
+
+test("veering into a shell's lane still gets you shot", L => {
+  const s = live(L, [{ x: 5, lane: 1, hp: 1 }, { x: 9, lane: 2, hp: 1 }])
+  s.shells = [{ x: 4, lane: 0 }]
+  L.setRandom(() => 0.0) // jink up into lane 0, right where the shell is
+  L.raiderTick(s)
+  assert.strictEqual(s.raiders.length, 1)
+  assert.strictEqual(s.shells.length, 0)
+  assert.strictEqual(s.hits, 1)
+})
+
+test("every hit counts toward the explosion LED, including dents in armor", L => {
+  const s = live(L, [{ x: 3, lane: 1, hp: 2, armored: true }, { x: 9, lane: 0, hp: 1 }])
+  L.fire(s); L.shellTick(s)
+  assert.strictEqual(s.hits, 1)
+  L.fire(s); L.shellTick(s)
+  assert.strictEqual(s.hits, 2)
 })
 
 test("clearing a wave pays a bonus for every city still lit, then STATUS starts the next", L => {

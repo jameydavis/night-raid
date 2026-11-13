@@ -42,6 +42,8 @@ omarchy-shell jameydavis.night-raid toggle
 ## Rules
 
 - Each wave sends more raiders, faster, with shorter gaps between them.
+- Raiders sometimes veer diagonally into a neighboring lane, and later waves do it more often.
+- The starburst LED next to the scoreboard flashes every time a shell hits a raider.
 - From wave 2, bright **armored** raiders take two hits. From wave 3, **fast** raiders flicker and
   fly two columns at a time.
 - A raider that rams your launcher is destroyed, but the launcher is knocked out for a moment and

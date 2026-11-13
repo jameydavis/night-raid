@@ -43,6 +43,7 @@ function newGame(pro, high) {
     blasts: [],            // { x, lane, ttl } explosion flashes, in shell ticks
     toSpawn: 0,
     cooldown: 0,
+    hits: 0,               // raider hits so far; drives the explosion LED
     events: []
   }
   setupWave(s, 1)
@@ -160,20 +161,35 @@ function raiderTick(s) {
   checkWaveOver(s)
 }
 
+// Chance a raider veers into a neighboring lane on a step; later waves jink more.
+function jinkChance(s) { return Math.min(0.25, 0.06 + 0.025 * s.wave) }
+
 function stepRaider(s, rd) {
   var nx = rd.x - 1
-  // Flying into a shell: the shell scores the hit.
+  // Now and then a raider veers diagonally into a neighboring free lane.
+  var nl = rd.lane
+  if (nx > CITY_X && random() < jinkChance(s)) {
+    var choices = [rd.lane - 1, rd.lane + 1].filter(function(l) {
+      return l >= 0 && l < LANES && raiderAt(s, nx, l) < 0 && raiderAt(s, rd.x, l) < 0
+    })
+    if (choices.length) nl = choices[rint(0, choices.length - 1)]
+  }
+  // Flying into a shell (in the lane it's leaving or the one it's entering):
+  // the shell scores the hit.
   for (var j = 0; j < s.shells.length; j++) {
-    if (s.shells[j].lane === rd.lane && (s.shells[j].x === nx || s.shells[j].x === rd.x)) {
+    var sh = s.shells[j]
+    var meets = (sh.lane === rd.lane && (sh.x === nx || sh.x === rd.x)) || (sh.lane === nl && sh.x === nx)
+    if (meets) {
       s.shells.splice(j, 1)
       hit(s, s.raiders.indexOf(rd))
       if (rd.gone) return
       break
     }
   }
-  // Blocked by another raider in the same lane: hold position.
-  if (raiderAt(s, nx, rd.lane) >= 0) return
+  // Blocked by another raider: hold position.
+  if (raiderAt(s, nx, nl) >= 0) return
   rd.x = nx
+  rd.lane = nl
   if (rd.x === LAUNCHER_X && rd.lane === s.launcher) { launcherHit(s, s.raiders.indexOf(rd)); return }
   if (rd.x <= CITY_X) {
     rd.gone = true
@@ -210,6 +226,7 @@ function hit(s, idx) {
   var rd = s.raiders[idx]
   if (!rd || rd.gone) return
   rd.hp -= 1
+  s.hits += 1   // the host lights the explosion LED whenever this changes
   if (rd.hp > 0) { rd.hit = true; emit(s, "clang", "", "ARMORED - HIT IT AGAIN"); return }
   rd.gone = true
   var pts = (rd.fast ? 20 : rd.armored ? 30 : 10) * s.wave

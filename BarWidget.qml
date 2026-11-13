@@ -6,6 +6,7 @@
 // in Logic.js; this file owns timers, input, sound, and the device face.
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -63,6 +64,10 @@ Panel {
   property bool scoreHeld: false
   property double scorePressedAt: 0
 
+  property int lastHits: 0
+  property bool boomLit: false
+  Timer { id: boomTimer; interval: 380; onTriggered: root.boomLit = false }
+
   function sync() {
     var events = s.events.splice(0, s.events.length)
     var best = "", bestRank = -1
@@ -76,6 +81,11 @@ Panel {
       }
     }
     if (best) play(best)
+    // Any hit since the last update flashes the explosion LED.
+    if (s.hits !== lastHits) {
+      lastHits = s.hits
+      if (s.hits > 0) { boomLit = true; boomTimer.restart() }
+    }
     phase = s.phase
     rev++
   }
@@ -181,6 +191,7 @@ Panel {
       if (phase === "gameover" || now - lastNewGamePress < 2500) {
         lastNewGamePress = 0
         s = Logic.newGame(s.pro, s.high)
+        lastHits = 0
         paused = false
         flash("", "NEW GAME - PRO " + s.pro)
         play("blip")
@@ -438,7 +449,12 @@ Panel {
           Layout.alignment: Qt.AlignHCenter
           spacing: root.u * 2.2
 
-          Lamp { text: "RADAR"; lit: root.radar && root.blink % 6 < 4; Layout.alignment: Qt.AlignVCenter }
+          // The explosion LED: a starburst that sits dark like any unlit LED
+          // and flashes when a shell hits a raider.
+          Starburst {
+            Layout.alignment: Qt.AlignVCenter
+            lit: root.boomLit
+          }
 
           Rectangle {
             Layout.alignment: Qt.AlignVCenter
@@ -480,7 +496,12 @@ Panel {
             }
           }
 
-          Lamp { text: "READY"; lit: root.ready; Layout.alignment: Qt.AlignVCenter }
+          Column {
+            Layout.alignment: Qt.AlignVCenter
+            spacing: root.u * 0.9
+            Lamp { text: "RADAR"; lit: root.radar && root.blink % 6 < 4 }
+            Lamp { text: "READY"; lit: root.ready }
+          }
         }
 
         PlainLabel {
@@ -580,7 +601,7 @@ Panel {
               text: "RAIDERS FLY IN FROM THE RIGHT. ANY ONE THAT REACHES THE LEFT EDGE BLACKS OUT THAT LANE'S "
                 + "CITY - LOSE ALL THREE AND THE LIGHTS ARE OUT. SLIDE YOUR LAUNCHER BETWEEN LANES WITH W AND S "
                 + "(OR THE ARROWS) AND FIRE WITH SPACE; ONLY TWO SHELLS CAN BE IN THE AIR. BRIGHT RAIDERS ARE "
-                + "ARMORED AND TAKE TWO HITS, FLICKERING ONES ARE FAST, AND A RAIDER THAT RAMS YOUR LAUNCHER "
+                + "ARMORED AND TAKE TWO HITS, FLICKERING ONES ARE FAST, SOME VEER INTO ANOTHER LANE, AND A RAIDER THAT RAMS YOUR LAUNCHER "
                 + "KNOCKS IT OUT FOR A MOMENT. EVERY CITY STILL LIT AFTER A WAVE EARNS A BONUS; PRESS STATUS "
                 + "FOR THE NEXT WAVE."
             }
@@ -591,6 +612,57 @@ Panel {
   }
 
   // ------------------------------------------------------------- small parts
+
+  // A ten-point starburst LED with a hot core, glowing when lit: five rounded
+  // bars rotated around the center make the ten spikes.
+  component Starburst: Item {
+    id: burst
+    property bool lit: false
+    readonly property real span: root.u * 6.2
+    implicitWidth: span
+    implicitHeight: span
+    Layout.preferredWidth: span
+    Layout.preferredHeight: span
+
+    // The glow layer carries its own margin instead of MultiEffect's auto
+    // padding, which would shrink the star drawn in the layer.
+    MultiEffect {
+      source: star
+      x: star.x; y: star.y; width: star.width; height: star.height
+      visible: burst.lit
+      blurEnabled: true
+      blurMax: 40
+      blur: 1.0
+      brightness: 0.5
+      autoPaddingEnabled: false
+    }
+
+    Item {
+      id: star
+      anchors.centerIn: parent
+      width: burst.span * 1.8
+      height: burst.span * 1.8
+      layer.enabled: true
+      Repeater {
+        model: 5
+        Rectangle {
+          anchors.centerIn: parent
+          width: burst.span * (index % 2 === 0 ? 0.96 : 0.78)
+          height: burst.span * 0.13
+          radius: height / 2
+          rotation: index * 36
+          color: burst.lit ? "#ff5a24" : "#3a0c09"
+        }
+      }
+      Rectangle {
+        anchors.centerIn: parent
+        width: burst.span * 0.4; height: width; radius: width / 2
+        color: burst.lit ? "#ffd36b" : "#2a0907"
+        border.width: burst.lit ? 2 : 0
+        border.color: "#fff2d0"
+      }
+    }
+  }
 
   component PlainLabel: Text {
     textFormat: Text.PlainText

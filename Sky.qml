@@ -38,13 +38,23 @@ Rectangle {
     Rectangle {
       readonly property int level: field.leds.length > index ? field.leds[index] : 0
       readonly property bool city: index % field.cols === 0
-      visible: level === 0
+      visible: level === 0 && !city
       x: field.ox + (index % field.cols) * field.cell + (field.cell - width) / 2
       y: field.oy + Math.floor(index / field.cols) * field.cell + (field.cell - height) / 2
       width: field.cell * (city ? 0.5 : 0.66)
       height: field.cell * (city ? 0.5 : 0.3)
       radius: city ? field.cell * 0.08 : height / 2
       color: city ? "#2e1d06" : "#3a0c09"
+    }
+  }
+
+  // The cities, unlit: three dark skylines that are always faintly visible.
+  Repeater {
+    model: field.lanes
+    CityIcon {
+      lit: false
+      x: field.ox + (field.cell - width) / 2
+      y: field.oy + index * field.cell + (field.cell - height) / 2
     }
   }
 
@@ -85,10 +95,20 @@ Rectangle {
     layer.enabled: true
 
     Repeater {
+      model: field.lanes
+      CityIcon {
+        lit: true
+        visible: field.leds.length > index * field.cols && field.leds[index * field.cols] === 6
+        x: field.glowPad + field.ox + (field.cell - width) / 2
+        y: field.glowPad + field.oy + index * field.cell + (field.cell - height) / 2
+      }
+    }
+
+    Repeater {
       model: field.cols * field.lanes
       Item {
         readonly property int level: field.leds.length > index ? field.leds[index] : 0
-        visible: level > 0
+        visible: level > 0 && level !== 6
         x: field.glowPad + field.ox + (index % field.cols) * field.cell
         y: field.glowPad + field.oy + Math.floor(index / field.cols) * field.cell
         width: field.cell
@@ -121,6 +141,51 @@ Rectangle {
             radius: height / 2
             color: "#ffffff"
             opacity: level >= 3 ? 0.55 : 0.25
+          }
+        }
+      }
+    }
+  }
+
+  // A city: three simplified buildings of different heights with blacked-out
+  // windows. Lit cities glow amber; a lost city stays dark like an unlit LED.
+  component CityIcon: Item {
+    id: cityIcon
+    property bool lit: true
+    width: field.cell * 0.7
+    height: field.cell * 0.62
+    readonly property color body: lit ? "#ffb020" : "#2e1d06"
+    readonly property color window: lit ? "#2a1402" : "#170d03"
+
+    // [x, width, height] as fractions of the icon, plus the window grid.
+    Repeater {
+      model: [
+        { x: 0.0, w: 0.28, h: 0.62, cols: 1, rows: 2 },
+        { x: 0.33, w: 0.34, h: 1.0, cols: 2, rows: 3 },
+        { x: 0.72, w: 0.28, h: 0.78, cols: 1, rows: 2 }
+      ]
+      Rectangle {
+        readonly property var b: modelData
+        x: b.x * cityIcon.width
+        width: b.w * cityIcon.width
+        height: b.h * cityIcon.height
+        y: cityIcon.height - height
+        radius: cityIcon.width * 0.03
+        color: cityIcon.body
+
+        Grid {
+          anchors.horizontalCenter: parent.horizontalCenter
+          y: parent.height * 0.14
+          columns: b.cols
+          columnSpacing: cityIcon.width * 0.05
+          rowSpacing: cityIcon.height * 0.08
+          Repeater {
+            model: b.cols * b.rows
+            Rectangle {
+              width: cityIcon.width * 0.075
+              height: width
+              color: cityIcon.window
+            }
           }
         }
       }
