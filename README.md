@@ -46,7 +46,7 @@ omarchy-shell jameydavis.night-raid toggle
 - Raiders sometimes veer diagonally into a neighboring lane, and later waves do it more often.
 - The starburst LED next to the scoreboard flashes every time a shell hits a raider.
 - Swamped? A mega bomb clears the whole sky and still scores every raider it takes out. The BOMBS
-  lights under the display show how many you have left.
+  lights next to the starburst show how many you have left for the whole game.
 - From wave 2, bright **armored** raiders take two hits. From wave 3, **fast** raiders flicker and
   fly two columns at a time.
 - A raider that rams your launcher is destroyed, but the launcher is knocked out for a moment and

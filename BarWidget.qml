@@ -460,6 +460,31 @@ Panel {
             lit: root.boomLit
           }
 
+          // Mega bombs left for the whole game, beside the explosion LED.
+          Column {
+            Layout.alignment: Qt.AlignVCenter
+            spacing: root.u * 0.6
+            PlainLabel {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "BOMBS"
+              color: root.bombs > 0 ? root.ink : root.inkDim
+              font.pixelSize: root.u * 1.0
+            }
+            Row {
+              anchors.horizontalCenter: parent.horizontalCenter
+              spacing: root.u * 0.5
+              Repeater {
+                model: 3
+                Rectangle {
+                  width: root.u * 1.1; height: width; radius: width / 2
+                  color: index < root.bombs ? "#ff5a24" : "#3a0c09"
+                  border.width: index < root.bombs ? 1 : 0
+                  border.color: "#ffd36b"
+                }
+              }
+            }
+          }
+
           Rectangle {
             Layout.alignment: Qt.AlignVCenter
             implicitWidth: digits.implicitWidth + root.u * 2
@@ -530,29 +555,6 @@ Panel {
           Lamp { text: "PRO 2"; lit: root.pro === 2 }
           Lamp { text: "SOUND"; lit: !root.muted }
           Item { Layout.fillWidth: true }
-          // Mega bombs left, as three small lights.
-          Row {
-            spacing: root.u * 0.45
-            PlainLabel {
-              anchors.verticalCenter: parent.verticalCenter
-              text: "BOMBS"
-              color: root.inkDim
-              font.pixelSize: root.u * 1.0
-            }
-            Item { width: root.u * 0.3; height: 1 }
-            Repeater {
-              model: 3
-              Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                width: root.u * 0.9; height: width; radius: width / 2
-                color: index < root.bombs ? "#ff5a24" : "#3a0c09"
-                border.width: index < root.bombs ? 1 : 0
-                border.color: "#ffd36b"
-              }
-            }
-          }
-          Item { width: root.u * 0.8; height: 1 }
-
           // The cities still lit, as small amber lights.
           Row {
             spacing: root.u * 0.45

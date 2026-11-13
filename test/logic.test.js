@@ -168,6 +168,16 @@ test("only three mega bombs per game, and they carry over between waves", L => {
   assert.strictEqual(t.phase, "dead")
   L.nextWave(t)
   assert.strictEqual(t.bombs, L.MEGA_BOMBS - 1, "no refill between waves")
+  // Several more waves later, still no refill.
+  for (let w = 0; w < 5; w++) {
+    t.phase = "live"; t.toSpawn = 0; t.raiders = [{ x: 4, lane: t.launcher, hp: 1 }]
+    L.fire(t); for (let i = 0; i < 6; i++) L.shellTick(t)
+    assert.strictEqual(t.phase, "dead")
+    L.nextWave(t)
+  }
+  assert.strictEqual(t.wave, 7)
+  assert.strictEqual(t.bombs, L.MEGA_BOMBS - 1, "bombs are per game, not per wave")
+  assert.strictEqual(L.newGame(1).bombs, L.MEGA_BOMBS, "a new game starts with three")
 })
 
 test("clearing a wave pays a bonus for every city still lit, then STATUS starts the next", L => {
