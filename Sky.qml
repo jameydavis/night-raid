@@ -3,6 +3,7 @@
 // in from the right. Unlit LEDs stay faintly visible like the real thing.
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Shapes
 
 Rectangle {
   id: field
@@ -38,7 +39,8 @@ Rectangle {
     Rectangle {
       readonly property int level: field.leds.length > index ? field.leds[index] : 0
       readonly property bool city: index % field.cols === 0
-      visible: level === 0 && !city
+      readonly property bool track: index % field.cols === 1
+      visible: level === 0 && !city && !track
       x: field.ox + (index % field.cols) * field.cell + (field.cell - width) / 2
       y: field.oy + Math.floor(index / field.cols) * field.cell + (field.cell - height) / 2
       width: field.cell * (city ? 0.5 : 0.66)
@@ -54,6 +56,17 @@ Rectangle {
     CityIcon {
       lit: false
       x: field.ox + (field.cell - width) / 2
+      y: field.oy + index * field.cell + (field.cell - height) / 2
+    }
+  }
+
+  // The launcher's track, unlit: a dark spaceship in every lane it can be in.
+  Repeater {
+    model: field.lanes
+    ShipIcon {
+      fill: "#3a0c09"
+      cockpit: "#2a0907"
+      x: field.ox + field.cell + (field.cell - width) / 2
       y: field.oy + index * field.cell + (field.cell - height) / 2
     }
   }
@@ -104,11 +117,25 @@ Rectangle {
       }
     }
 
+    // The launcher, lit.
+    Repeater {
+      model: field.lanes
+      ShipIcon {
+        visible: field.leds.length > index * field.cols + 1 && field.leds[index * field.cols + 1] === 3
+        fill: "#ff4a30"
+        cockpit: "#ffd0c0"
+        edge: "#ffb19e"
+        x: field.glowPad + field.ox + field.cell + (field.cell - width) / 2
+        y: field.glowPad + field.oy + index * field.cell + (field.cell - height) / 2
+      }
+    }
+
     Repeater {
       model: field.cols * field.lanes
       Item {
         readonly property int level: field.leds.length > index ? field.leds[index] : 0
-        visible: level > 0 && level !== 6
+        // Cities and the launcher are drawn as their own shapes.
+        visible: level > 0 && level !== 6 && !(level === 3 && index % field.cols === 1)
         x: field.glowPad + field.ox + (index % field.cols) * field.cell
         y: field.glowPad + field.oy + Math.floor(index / field.cols) * field.cell
         width: field.cell
@@ -189,6 +216,57 @@ Rectangle {
           }
         }
       }
+    }
+  }
+
+  // The launcher: a small spaceship pointing right at the raiders, with a
+  // pointed nose, swept fins, a notched tail and a cockpit window.
+  component ShipIcon: Item {
+    id: ship
+    property color fill: "#ff4a30"
+    property color cockpit: "#ffd0c0"
+    property color edge: "transparent"
+    width: field.cell * 0.78
+    height: field.cell * 0.52
+
+    Shape {
+      anchors.fill: parent
+      preferredRendererType: Shape.CurveRenderer
+      ShapePath {
+        fillColor: ship.fill
+        strokeColor: ship.edge
+        strokeWidth: ship.edge === "transparent" ? 0 : 1.5
+        joinStyle: ShapePath.RoundJoin
+        PathPolyline {
+          readonly property real w: ship.width
+          readonly property real h: ship.height
+          path: [
+            Qt.point(1.00 * w, 0.50 * h),   // nose
+            Qt.point(0.64 * w, 0.24 * h),
+            Qt.point(0.36 * w, 0.24 * h),
+            Qt.point(0.14 * w, 0.00 * h),   // top fin
+            Qt.point(0.22 * w, 0.30 * h),
+            Qt.point(0.00 * w, 0.36 * h),   // tail
+            Qt.point(0.10 * w, 0.50 * h),   // tail notch
+            Qt.point(0.00 * w, 0.64 * h),
+            Qt.point(0.22 * w, 0.70 * h),
+            Qt.point(0.14 * w, 1.00 * h),   // bottom fin
+            Qt.point(0.36 * w, 0.76 * h),
+            Qt.point(0.64 * w, 0.76 * h),
+            Qt.point(1.00 * w, 0.50 * h)
+          ]
+        }
+      }
+    }
+
+    // Cockpit window.
+    Rectangle {
+      x: ship.width * 0.5
+      y: ship.height * 0.4
+      width: ship.width * 0.2
+      height: ship.height * 0.2
+      radius: height / 2
+      color: ship.cockpit
     }
   }
 }
